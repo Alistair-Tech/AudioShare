@@ -77,11 +77,25 @@
         audioChunks.push(e.data);
         if (rec.state == "inactive") {
           let blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
-          console.log("Fsa");
+          if (
+            window.confirm(
+              "Are you sure that you want to share the audio on IPFS?"
+            )
+          ) {
+            shareIPFS(blob);
+          }
         }
       };
     }
-
+    function shareIPFS(blob) {
+      const ipfs = window.IpfsHttpClient("localhost", "5001");
+      try {
+        const results = ipfs.add(blob);
+      } catch (e) {
+        console.log(e);
+      }
+      window.alert("Successfully shared the audio with hash" + results.hash);
+    }
     loadDiv();
   </script>
 </html>
