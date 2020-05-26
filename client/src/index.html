@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+  <style>
+    #hero {
+      width: 100%;
+      height: 100vh;
+      background-image: url("/static/hero-bg.png");
+      position: relative;
+      color: black;
+    }
+  </style>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audio Share</title>
+    <link
+      rel="stylesheet"
+      href="https://v4-alpha.getbootstrap.com/dist/css/bootstrap.min.css"
+    />
+    <script src="https://unpkg.com/ipfs-http-client/dist/index.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  </head>
+
+  <body>
+    <div id="hero">
+      <div align="center" id="1" class="container"></div>
+    </div>
+  </body>
+  <script type="text/javascript">
+    var selected = 0;
+    function loadDiv() {
+      divToRender = document.getElementById("1");
+      if (!selected) {
+        divToRender.innerHTML += `
+         <h2>AudioShare</h2>
+        <p>A web app to record and share audio on IPFS</p>
+            <button onClick=setSelected(1)>Share Audio</button>
+        <button onClick=setSelected(2)>Retrieve Audio</button>
+         `;
+      } else if (selected == 1) {
+        divToRender.innerHTML = `
+         <h2>AudioShare</h2>
+        <p>A web app to record and share audio on IPFS</p>
+
+           `;
+      }
+    }
+    function setSelected(id) {
+      selected = id;
+      loadDiv();
+      addMyListeners();
+      loadvideo();
+    }
+    loadDiv();
+  </script>
+</html>
