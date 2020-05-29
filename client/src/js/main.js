@@ -1,21 +1,24 @@
+/**
+ * TODO:
+ * Add feature to share recored audio on IPFS
+ * Add feature to fetch recorded audio from IPFS
+ * Handle errors while audio recording
+ * Host webapp on IPNS
+ */
+
 let home = `
     <button onClick=setSelected(1)>Share Audio</button>
     <button onClick=setSelected(2)>Retrieve Audio</button>
 `;
 
 let share = `
-    <button id='start' onclick=toggleRecording("start")>
+    <button id='recordButton' onclick=toggleRecording()>
       Start Recording
     </button>
-    <button id='stop' onclick=toggleRecording("stop")>
-      Stop Recording
-    </button>
-    <button onClick='setSelected(0)'>Back</button>
 `;
 
 let retrieve = `
     <p>TODO:Add Search feature</p>
-    <button onClick=setSelected(0)>Back</button>
 `;
 
 /**
@@ -49,7 +52,7 @@ function setSelected(id) {
  * audioHandler() combines the audioChunks retrieved from the audio stream
  */
 
-var rec;
+let rec;
 
 function loadAudio() {
   navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
@@ -58,18 +61,15 @@ function loadAudio() {
 }
 
 function toggleRecording(id) {
-  let start = document.getElementById("start");
-  let stop = document.getElementById("stop");
-  if (id == "start") {
-    start.disabled = true;
-    stop.disabled = false;
-    audioChunks = [];
+  let record = document.getElementById("recordButton");
+  if (rec.state === "inactive") {
+    AudioChunks = [];
+    record.innerHTML = "Stop Recording";
     rec.start();
   } else {
     rec.stop();
     audioChunks = [];
-    stop.disabled = true;
-    start.disabled = false;
+    record.innerHTML = "Start Recording";
   }
 }
 
@@ -79,13 +79,19 @@ function audioHandler(stream) {
     audioChunks.push(e.data);
     if (rec.state == "inactive") {
       let blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
-      /**
-       * TODO:
-       * Add feature to share recored audio on IPFS
-       * Add feature to download/play the recorded audio
-       */
+      let blobUrl = URL.createObjectURL(blob);
+      divToRender = document.getElementById("toRender");
+      divToRender.innerHTML += `
+        <div>
+          <audio id='recordedAudio'></audio>
+          <a id='link'>Download Audio</a>
+        </div>
+      `;
+      audio = document.getElementById("recordedAudio");
+      audioDownload = document.getElementById("link");
+      audioDownload.href = blobUrl;
+      audio.src = blobUrl;
+      audio.controls = true;
     }
   };
 }
-
-loadDiv();
