@@ -29,7 +29,7 @@ let retrieve = `
 var selected = 0;
 
 function loadDiv() {
-  divToRender = document.getElementById("toRender");
+  let divToRender = document.getElementById("toRender");
   if (!selected) {
     divToRender.innerHTML = home;
   } else if (selected == 1) {
@@ -40,9 +40,12 @@ function loadDiv() {
   }
 }
 
+// Load the div to render html content
+loadDiv();
+
 function setSelected(id) {
   selected = id;
-  loadDiv();
+  loadDiv(); // Load div again to get new content
 }
 
 /**
