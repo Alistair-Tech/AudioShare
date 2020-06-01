@@ -3,7 +3,6 @@
  * Add feature to share recored audio on IPFS
  * Add feature to fetch recorded audio from IPFS
  * Handle errors while audio recording
- * Host webapp on IPNS
  */
 
 let home = `
@@ -55,7 +54,7 @@ function setSelected(id) {
  * audioHandler() combines the audioChunks retrieved from the audio stream
  */
 
-let rec;
+let rec, blob;
 
 function loadAudio() {
   navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
@@ -72,6 +71,7 @@ function toggleRecording(id) {
   } else {
     rec.stop();
     audioChunks = [];
+    blob = null;
     record.innerHTML = "Start Recording";
   }
 }
@@ -81,13 +81,14 @@ function audioHandler(stream) {
   rec.ondataavailable = (e) => {
     audioChunks.push(e.data);
     if (rec.state == "inactive") {
-      let blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
+      blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
       let blobUrl = URL.createObjectURL(blob);
       divToRender = document.getElementById("toRender");
       divToRender.innerHTML += `
         <div>
           <audio id='recordedAudio'></audio>
           <a id='link'>Download Audio</a>
+          <button onClick=shareOnIPFS()>Share on IPFS</button>
         </div>
       `;
       audio = document.getElementById("recordedAudio");
@@ -97,4 +98,17 @@ function audioHandler(stream) {
       audio.controls = true;
     }
   };
+}
+
+async function shareOnIPFS() {
+  // Initialize object to work with IPFS API
+  const ipfs = window.IpfsHttpClient({ host: "localhost", port: 5001 });
+  const results = await ipfs.add(blob);
+
+  // Iterate over thr async iterator to fetch the hash
+  for await (let result of results) {
+    alert(
+      "The audio has been successfully shared on IPFS with CID: " + result.path
+    );
+  }
 }
