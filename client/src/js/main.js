@@ -35,13 +35,17 @@ var selected = 0;
 
 function loadDiv() {
   let divToRender = document.getElementById("toRender");
+  let back = document.getElementById("temp");
   if (!selected) {
     divToRender.innerHTML = home;
+    back.style.visibility = "hidden"; // Make the back button invisible for home page
   } else if (selected == 1) {
     divToRender.innerHTML = share;
+    back.style.visibility = "visible";
     loadAudio();
   } else if (selected == 2) {
     divToRender.innerHTML = retrieve;
+    back.style.visibility = "visible";
   }
 }
 
