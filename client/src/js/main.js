@@ -1,8 +1,6 @@
 /**
  * TODO:
- * Add feature to share recored audio on IPFS
- * Add feature to fetch recorded audio from IPFS
- * Handle errors while audio recording
+ * Implement error handling for bad/invalid/non-existent CID input while searching on IPFS
  */
 
 let home = `
@@ -74,15 +72,19 @@ function loadAudio() {
 
 function toggleRecording(id) {
   let record = document.getElementById("recordButton");
-  if (rec.state === "inactive") {
-    AudioChunks = [];
-    record.innerHTML = "Stop Recording";
-    rec.start();
-  } else {
-    rec.stop();
-    audioChunks = [];
-    blob = null;
-    record.innerHTML = "Start Recording";
+  try {
+    if (rec.state === "inactive") {
+      AudioChunks = [];
+      record.innerHTML = "Stop Recording";
+      rec.start();
+    } else {
+      rec.stop();
+      audioChunks = [];
+      blob = null;
+      record.innerHTML = "Start Recording";
+    }
+  } catch {
+    alert("Please turn on Audio Sharing and Try Again!");
   }
 }
 
@@ -93,19 +95,7 @@ function audioHandler(stream) {
     if (rec.state == "inactive") {
       blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
       let blobUrl = URL.createObjectURL(blob);
-      divToRender = document.getElementById("toRender");
-      divToRender.innerHTML += `
-        <div>
-          <audio id='recordedAudio'></audio>
-          <a id='link'>Download Audio</a>
-          <button onClick=shareOnIPFS()>Share on IPFS</button>
-        </div>
-      `;
-      audio = document.getElementById("recordedAudio");
-      audioDownload = document.getElementById("link");
-      audioDownload.href = blobUrl;
-      audio.src = blobUrl;
-      audio.controls = true;
+      addOptions("share", blobUrl);
     }
   };
 }
@@ -115,7 +105,7 @@ async function shareOnIPFS() {
   const ipfs = window.IpfsHttpClient({ host: "localhost", port: 5001 });
   const results = await ipfs.add(blob);
 
-  // Iterate over thr async iterator to fetch the hash
+  // Iterate over the async iterator to fetch the hash
   for await (let result of results) {
     alert(
       "The audio has been successfully shared on IPFS with CID: " + result.path
@@ -123,41 +113,29 @@ async function shareOnIPFS() {
   }
 }
 
-async function searchOnIPFS() {
+function searchOnIPFS() {
+  // TODO: Add error handling while searching
+
   let cId = document.getElementById("cid").value;
-  console.log(cId);
-  let results;
-  loadDiv(2);
-  const ipfs = window.IpfsHttpClient({ host: "localhost", port: 5001 });
-  try {
-    results = await ipfs.cat(new window.Cids(cId));
-  } catch {
-    alert("Invalid Hash for an audio file! Please Try Again.");
-    return;
-  }
-  let count = 0;
-  for await (let result of results) {
-    count++;
-  }
-  if (count === 0) {
-    alert("Failed to find an audio file with this hash! Please Try Again! ");
-    return;
-  }
-  divToRender = document.getElementById("toRender");
-  divToRender.innerHTML += `
-    <div>
-      <audio id='recordedAudio'></audio>
-      <a id='link'>Download Audio</a>
-    </div>
-  `;
-  audio = document.getElementById("recordedAudio");
-  audioDownload = document.getElementById("link");
-  audioDownload.href = "http://127.0.0.1:8080/ipfs/" + cId;
-  audio.src = "http://127.0.0.1:8080/ipfs/" + cId;
-  audio.controls = true;
+  let url = "http://127.0.0.1:8080/ipfs/" + cId;
+  loadDiv(2); // Re-render the page to remove previous result (if any)
+  addOptions("search", url);
 }
 
-function handleError() {
-  loadDiv(2);
-  alert("This audio is not available on IPFS right now!");
+function addOptions(purpose, url) {
+  divToRender = document.getElementById("toRender");
+  divToRender.innerHTML += `
+      <audio id='recordedAudio'></audio>
+      <a id='link'>Download Audio</a>
+  `;
+  if (purpose === "share") {
+    divToRender.innerHTML += `
+      <button onClick=shareOnIPFS()>Share on IPFS</button>
+    `;
+  }
+  audio = document.getElementById("recordedAudio");
+  audioDownload = document.getElementById("link");
+  audioDownload.href = url;
+  audio.src = url;
+  audio.controls = true;
 }
