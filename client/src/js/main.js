@@ -26,7 +26,7 @@ let retrieve = `
 
 /**
  * loadDiv() dynamically renders HTML based on user's choice
- * selected varibale indicates user's choice
+ * selected variable indicates user's choice
  */
 
 var selected = 0;
@@ -114,7 +114,7 @@ async function shareOnIPFS() {
 }
 
 function searchOnIPFS() {
-  // TODO: Add error handling while searching
+  // TODO: Add error handling for search feature
 
   let cId = document.getElementById("cid").value;
   let url = "http://127.0.0.1:8080/ipfs/" + cId;
