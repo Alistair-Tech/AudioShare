@@ -17,7 +17,13 @@ let share = `
 `;
 
 let retrieve = `
-    <p>TODO:Add Search feature</p>
+    <h4>Search Audio on IPFS</h4>
+    <label for='cid'>Enter CID</label>
+    <input type='text' id='cid' name='cid'>
+    <br>
+    <br>
+    <button onClick=searchOnIPFS()>Search</button>
+  </div>
 `;
 
 /**
@@ -111,4 +117,43 @@ async function shareOnIPFS() {
       "The audio has been successfully shared on IPFS with CID: " + result.path
     );
   }
+}
+
+async function searchOnIPFS() {
+  let cId = document.getElementById("cid").value;
+  console.log(cId);
+  let results;
+  loadDiv(2);
+  const ipfs = window.IpfsHttpClient({ host: "localhost", port: 5001 });
+  try {
+    results = await ipfs.cat(new window.Cids(cId));
+  } catch {
+    alert("Invalid Hash for an audio file! Please Try Again.");
+    return;
+  }
+  let count = 0;
+  for await (let result of results) {
+    count++;
+  }
+  if (count === 0) {
+    alert("Failed to find an audio file with this hash! Please Try Again! ");
+    return;
+  }
+  divToRender = document.getElementById("toRender");
+  divToRender.innerHTML += `
+    <div>
+      <audio id='recordedAudio'></audio>
+      <a id='link'>Download Audio</a>
+    </div>
+  `;
+  audio = document.getElementById("recordedAudio");
+  audioDownload = document.getElementById("link");
+  audioDownload.href = "http://127.0.0.1:8080/ipfs/" + cId;
+  audio.src = "http://127.0.0.1:8080/ipfs/" + cId;
+  audio.controls = true;
+}
+
+function handleError() {
+  loadDiv(2);
+  alert("This audio is not available on IPFS right now!");
 }
