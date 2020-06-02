@@ -1,9 +1,6 @@
 /**
  * TODO:
- * Add feature to share recored audio on IPFS
- * Add feature to fetch recorded audio from IPFS
- * Handle errors while audio recording
- * Host webapp on IPNS
+ * Implement error handling for bad/invalid/non-existent CID input while searching on IPFS
  */
 
 let home = `
@@ -18,25 +15,35 @@ let share = `
 `;
 
 let retrieve = `
-    <p>TODO:Add Search feature</p>
+    <h4>Search Audio on IPFS</h4>
+    <label for='cid'>Enter CID</label>
+    <input type='text' id='cid' name='cid'>
+    <br>
+    <br>
+    <button onClick=searchOnIPFS()>Search</button>
+  </div>
 `;
 
 /**
  * loadDiv() dynamically renders HTML based on user's choice
- * selected varibale indicates user's choice
+ * selected variable indicates user's choice
  */
 
 var selected = 0;
 
 function loadDiv() {
   let divToRender = document.getElementById("toRender");
+  let back = document.getElementById("temp");
   if (!selected) {
     divToRender.innerHTML = home;
+    back.style.visibility = "hidden"; // Make the back button invisible for home page
   } else if (selected == 1) {
     divToRender.innerHTML = share;
+    back.style.visibility = "visible";
     loadAudio();
   } else if (selected == 2) {
     divToRender.innerHTML = retrieve;
+    back.style.visibility = "visible";
   }
 }
 
@@ -55,7 +62,7 @@ function setSelected(id) {
  * audioHandler() combines the audioChunks retrieved from the audio stream
  */
 
-let rec;
+let rec, blob;
 
 function loadAudio() {
   navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
@@ -65,14 +72,19 @@ function loadAudio() {
 
 function toggleRecording(id) {
   let record = document.getElementById("recordButton");
-  if (rec.state === "inactive") {
-    AudioChunks = [];
-    record.innerHTML = "Stop Recording";
-    rec.start();
-  } else {
-    rec.stop();
-    audioChunks = [];
-    record.innerHTML = "Start Recording";
+  try {
+    if (rec.state === "inactive") {
+      AudioChunks = [];
+      record.innerHTML = "Stop Recording";
+      rec.start();
+    } else {
+      rec.stop();
+      audioChunks = [];
+      blob = null;
+      record.innerHTML = "Start Recording";
+    }
+  } catch {
+    alert("Please turn on Audio Sharing and Try Again!");
   }
 }
 
@@ -81,20 +93,49 @@ function audioHandler(stream) {
   rec.ondataavailable = (e) => {
     audioChunks.push(e.data);
     if (rec.state == "inactive") {
-      let blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
+      blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
       let blobUrl = URL.createObjectURL(blob);
-      divToRender = document.getElementById("toRender");
-      divToRender.innerHTML += `
-        <div>
-          <audio id='recordedAudio'></audio>
-          <a id='link'>Download Audio</a>
-        </div>
-      `;
-      audio = document.getElementById("recordedAudio");
-      audioDownload = document.getElementById("link");
-      audioDownload.href = blobUrl;
-      audio.src = blobUrl;
-      audio.controls = true;
+      addOptions("share", blobUrl);
     }
   };
+}
+
+async function shareOnIPFS() {
+  // Initialize object to work with IPFS API
+  const ipfs = window.IpfsHttpClient({ host: "localhost", port: 5001 });
+  const results = await ipfs.add(blob);
+
+  // Iterate over the async iterator to fetch the hash
+  for await (let result of results) {
+    alert(
+      "The audio has been successfully shared on IPFS with CID: " + result.path
+    );
+  }
+}
+
+function searchOnIPFS() {
+  // TODO: Add error handling for search feature
+
+  let cId = document.getElementById("cid").value;
+  let url = "http://127.0.0.1:8080/ipfs/" + cId;
+  loadDiv(2); // Re-render the page to remove previous result (if any)
+  addOptions("search", url);
+}
+
+function addOptions(purpose, url) {
+  divToRender = document.getElementById("toRender");
+  divToRender.innerHTML += `
+      <audio id='recordedAudio'></audio>
+      <a id='link'>Download Audio</a>
+  `;
+  if (purpose === "share") {
+    divToRender.innerHTML += `
+      <button onClick=shareOnIPFS()>Share on IPFS</button>
+    `;
+  }
+  audio = document.getElementById("recordedAudio");
+  audioDownload = document.getElementById("link");
+  audioDownload.href = url;
+  audio.src = url;
+  audio.controls = true;
 }
