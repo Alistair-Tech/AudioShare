@@ -38,6 +38,8 @@ let recordedAudioLength = 0;
 let endTimeout = null;
 let silenceBuffers = [];
 
+// Audio Stream Handler Functions
+
 function processAudioStream(data, callback) {
   vad.processAudio(data, 16000).then((res) => {
     switch (res) {
@@ -51,7 +53,7 @@ function processAudioStream(data, callback) {
         processSilence(data, callback);
         break;
       case VAD.Event.VOICE:
-        processVoice(data); // Start precessing when voice is recognized
+        processVoice(data, callback); // Start precessing when voice is recognized
         break;
       default:
         console.log("default", res);
@@ -84,69 +86,7 @@ function resetAudioStream() {
   silenceStart = null;
 }
 
-function processSilence(data, callback) {
-  if (recordedChunks > 0) {
-    // recording is on
-    process.stdout.write("-"); // silence detected while recording
-    feedAudioContent(data);
-    if (silenceStart === null) {
-      silenceStart = new Date().getTime();
-    } else {
-      let now = new Date().getTime();
-      if (now - silenceStart > SILENCE_THRESHOLD) {
-        silenceStart = null;
-        console.log("[end]");
-        let results = intermediateDecode();
-        if (results) {
-          if (callback) {
-            callback(results);
-          }
-        }
-      }
-    }
-  } else {
-    // No Recording
-    process.stdout.write("."); // silence detected while not recording
-    bufferSilence(data);
-  }
-}
-
-function bufferSilence(data) {
-  // VAD has a tendency to cut the first bit of audio data from the start of a recording
-  // so keep a buffer of that first bit of audio and in addBufferedSilence() reattach it to the beginning of the recording
-  silenceBuffers.push(data);
-  if (silenceBuffers.length >= 3) {
-    silenceBuffers.shift();
-  }
-}
-
-function addBufferedSilence(data) {
-  let audioBuffer;
-  if (silenceBuffers.length) {
-    silenceBuffers.push(data);
-    let length = 0;
-    silenceBuffers.forEach(function (buf) {
-      length += buf.length;
-    });
-    audioBuffer = Buffer.concat(silenceBuffers, length);
-    silenceBuffers = [];
-  } else audioBuffer = data;
-  return audioBuffer;
-}
-
-function processVoice(data) {
-  silenceStart = null;
-  if (recordedChunks === 0) {
-    console.log("");
-    process.stdout.write("[start]"); // recording started
-  } else {
-    process.stdout.write("="); // still recording
-  }
-  recordedChunks++;
-
-  data = addBufferedSilence(data);
-  feedAudioContent(data);
-}
+// DeepSpeech Stream Handler Functions
 
 function createStream() {
   modelStream = englishModel.createStream();
@@ -173,16 +113,98 @@ function finishStream() {
   modelStream = null;
 }
 
-function intermediateDecode() {
+// Stream Processor functions
+
+function processSilence(data, callback) {
+  if (recordedChunks > 0) {
+    // recording is on
+    process.stdout.write("-"); // silence detected while recording
+    feedAudioContent(data);
+    if (silenceStart === null) {
+      silenceStart = new Date().getTime();
+    } else {
+      let now = new Date().getTime();
+      if (now - silenceStart > SILENCE_THRESHOLD) {
+        silenceStart = null;
+        console.log("[end]");
+        let results = finishDecode();
+        if (results) {
+          if (callback) {
+            callback(results);
+          }
+        }
+      }
+    }
+  } else {
+    // No Recording
+    process.stdout.write("."); // silence detected while not recording
+    bufferSilence(data);
+  }
+}
+
+function processVoice(data, callback) {
+  silenceStart = null;
+  if (recordedChunks === 0) {
+    console.log("");
+    process.stdout.write("[start]"); // recording started
+  } else {
+    process.stdout.write("="); // still recording
+  }
+  let results = intermediateDecode();
+  if (results) {
+    if (callback) {
+      callback(results);
+    }
+  }
+  recordedChunks++;
+  data = addBufferedSilence(data);
+  feedAudioContent(data);
+}
+
+// Decoder Functions
+
+function finishDecode() {
   let results = finishStream();
   createStream();
   return results;
+}
+
+function intermediateDecode() {
+  let results = modelStream.intermediateDecode();
+  return results;
+}
+
+// Helper Functions
+
+function bufferSilence(data) {
+  // VAD has a tendency to cut the first bit of audio data from the start of a recording
+  // so keep a buffer of that first bit of audio and in addBufferedSilence() reattach it to the beginning of the recording
+  silenceBuffers.push(data);
+  if (silenceBuffers.length >= 3) {
+    silenceBuffers.shift();
+  }
+}
+
+function addBufferedSilence(data) {
+  let audioBuffer;
+  if (silenceBuffers.length) {
+    silenceBuffers.push(data);
+    let length = 0;
+    silenceBuffers.forEach(function (buf) {
+      length += buf.length;
+    });
+    audioBuffer = Buffer.concat(silenceBuffers, length);
+    silenceBuffers = [];
+  } else audioBuffer = data;
+  return audioBuffer;
 }
 
 function feedAudioContent(chunk) {
   recordedAudioLength += (chunk.length / 2) * (1 / 16000) * 1000;
   modelStream.feedAudioContent(chunk);
 }
+
+// Socket Connection
 
 io.on("connection", (socket) => {
   console.log("a user connected");
@@ -192,7 +214,12 @@ io.on("connection", (socket) => {
   });
   socket.on("micBinaryStream", function (blob) {
     processAudioStream(blob, (results) => {
-      console.log("here", results);
+      console.log(results);
+    });
+  });
+  socket.on("endAudioStream", () => {
+    endAudioStream((results) => {
+      console.log(results);
     });
   });
 });

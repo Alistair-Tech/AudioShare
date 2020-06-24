@@ -86,6 +86,7 @@ function toggleRecording(id) {
     } else {
       rec.stop();
       audioChunks = [];
+      socket.emit("endAudioStream");
       blob = null;
       record.innerHTML = "Start Recording";
     }
