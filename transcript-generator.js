@@ -1,14 +1,20 @@
+/**
+ * Express server is setup just to avoid CORS issue in development.
+ * In Production there won't be any express server and the static files shall
+ * be served directly from IPFS
+ */
+
 var express = require("express");
 var app = express();
 var http = require("http").createServer(app);
 var io = require("socket.io")(http);
 const DeepSpeech = require("deepspeech");
 const VAD = require("node-vad");
+const DEEPSPEECH_MODEL = require("./settings.js").DEEPSPEECH_MODEL;
+const SILENCE_THRESHOLD = require("./settings.js").SILENCE_THRESHOLD;
+const INACTIVITY_THRESHOLD = require("./settings.js").INACTIVITY_THRESHOLD;
 
-let DEEPSPEECH_MODEL = __dirname + "/deepspeech-models/deepspeech-0.7.0-models"; // path to deepspeech english model directory
-
-let SILENCE_THRESHOLD = 200;
-
+// Serve Static files to client
 app.use(express.static("client/src"));
 
 const VAD_MODE = VAD.Mode.VERY_AGGRESSIVE;
@@ -22,6 +28,7 @@ function createModel(modelDir) {
   return model;
 }
 
+// Instantiate DeepSpeech Model
 let englishModel = createModel(DEEPSPEECH_MODEL);
 
 let modelStream;
@@ -44,19 +51,19 @@ function processAudioStream(data, callback) {
         processSilence(data, callback);
         break;
       case VAD.Event.VOICE:
-        processVoice(data);
+        processVoice(data); // Start precessing when voice is recognized
         break;
       default:
         console.log("default", res);
     }
   });
 
-  // timeout after 1s of inactivity
+  // timeout in case no activity is detected
   clearTimeout(endTimeout);
   endTimeout = setTimeout(function () {
     console.log("timeout");
     resetAudioStream();
-  }, 1000);
+  }, INACTIVITY_THRESHOLD);
 }
 
 function endAudioStream(callback) {
@@ -81,9 +88,7 @@ function processSilence(data, callback) {
   if (recordedChunks > 0) {
     // recording is on
     process.stdout.write("-"); // silence detected while recording
-
     feedAudioContent(data);
-
     if (silenceStart === null) {
       silenceStart = new Date().getTime();
     } else {
@@ -100,6 +105,7 @@ function processSilence(data, callback) {
       }
     }
   } else {
+    // No Recording
     process.stdout.write("."); // silence detected while not recording
     bufferSilence(data);
   }
