@@ -16,6 +16,7 @@
     <script src="https://unpkg.com/cids/dist/index.min.js"></script>
 
     <script src="https://unpkg.com/ipfs-http-client/dist/index.min.js" crossorigin="anonymous"></script>></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
   </head>
 
   <body>
@@ -26,5 +27,10 @@
       <button id="temp" onClick=setSelected(0)>Back</button>
     </div>
   </body>
-  <script src="http://127.0.0.1:8080/ipns/QmeWpo7nS7ASUwXK6m6A4f7S9QgrAjChLmkNxWbP37KZsT/js/main.js"></script>
+  <script src="js/main.js"></script>
+  <!-- 
+    This filepath is only for development.
+    In production the Web App shall be served 
+    from IPFS gateways and not from the local server 
+  -->
 </html>
