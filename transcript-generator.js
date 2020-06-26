@@ -37,6 +37,7 @@ let silenceStart = null;
 let recordedAudioLength = 0;
 let endTimeout = null;
 let silenceBuffers = [];
+let slash = 0;
 
 // Audio Stream Handler Functions
 
@@ -118,7 +119,7 @@ function finishStream() {
 function processSilence(data, callback) {
   if (recordedChunks > 0) {
     // recording is on
-    process.stdout.write("-"); // silence detected while recording
+    // silence detected while recording
     feedAudioContent(data);
     if (silenceStart === null) {
       silenceStart = new Date().getTime();
@@ -137,19 +138,24 @@ function processSilence(data, callback) {
     }
   } else {
     // No Recording
-    process.stdout.write("."); // silence detected while not recording
+    console.clear();
+    console.log("Waiting for Recording To Start"); // silence detected while not recording
     bufferSilence(data);
   }
 }
 
 function processVoice(data, callback) {
   silenceStart = null;
-  if (recordedChunks === 0) {
-    console.log("");
-    process.stdout.write("[start]"); // recording started
+  console.clear();
+  if (slash) {
+    console.log("Recording /");
+    slash = 0;
   } else {
-    process.stdout.write("="); // still recording
+    console.log("Recording \\");
+    slash = 1;
   }
+  data = addBufferedSilence(data);
+  feedAudioContent(data);
   let results = intermediateDecode();
   if (results) {
     if (callback) {
@@ -157,8 +163,6 @@ function processVoice(data, callback) {
     }
   }
   recordedChunks++;
-  data = addBufferedSilence(data);
-  feedAudioContent(data);
 }
 
 // Decoder Functions
