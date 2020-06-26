@@ -10,6 +10,8 @@ var http = require("http").createServer(app);
 var io = require("socket.io")(http);
 const DeepSpeech = require("deepspeech");
 const VAD = require("node-vad");
+const IPFS = require("ipfs");
+const Room = require("ipfs-pubsub-room");
 const DEEPSPEECH_MODEL = require("./settings.js").DEEPSPEECH_MODEL;
 const SILENCE_THRESHOLD = require("./settings.js").SILENCE_THRESHOLD;
 const INACTIVITY_THRESHOLD = require("./settings.js").INACTIVITY_THRESHOLD;
@@ -207,6 +209,33 @@ function feedAudioContent(chunk) {
   recordedAudioLength += (chunk.length / 2) * (1 / 16000) * 1000;
   modelStream.feedAudioContent(chunk);
 }
+var room;
+// create IPFS node
+async function createNode() {
+  var ipfs = await IPFS.create({
+    repo: (() => `ipfs-temp-repo/repo-${Math.random()}`)(),
+    Addresses: {
+      Swarm: ["/ip4/0.0.0.0/tcp/4007", "/ip4/127.0.0.1/tcp/4003/ws"],
+      API: "/ip4/127.0.0.1/tcp/5002",
+      Gateway: "/ip4/127.0.0.1/tcp/9090",
+    },
+    EXPERIMENTAL: {
+      pubsub: true, // required, enables pubsub
+    },
+  });
+  try {
+    await ipfs.start();
+    console.log("Node started!");
+  } catch (error) {
+    console.error("Node failed to start!", error);
+  }
+  room = new Room(ipfs, "deepspeech");
+
+  room.on("peer joined", (peer) => console.log("peer " + peer + " joined"));
+  room.on("peer left", (peer) => console.log("peer " + peer + " left"));
+}
+
+createNode();
 
 // Socket Connection
 
@@ -218,12 +247,12 @@ io.on("connection", (socket) => {
   });
   socket.on("micBinaryStream", function (blob) {
     processAudioStream(blob, (results) => {
-      console.log(results);
+      room.broadcast(results);
     });
   });
   socket.on("endAudioStream", () => {
     endAudioStream((results) => {
-      console.log(results);
+      room.broadcast(results);
     });
   });
 });
