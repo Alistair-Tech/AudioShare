@@ -19,6 +19,7 @@
   "dependencies": {
     "deepspeech": "^0.7.4",
     "express": "^4.17.1",
+    "ipfs-http-client": "^44.3.0",
     "node-vad": "^1.1.4",
     "socket.io": "^2.3.0"
   }
