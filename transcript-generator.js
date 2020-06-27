@@ -209,16 +209,12 @@ function feedAudioContent(chunk) {
   recordedAudioLength += (chunk.length / 2) * (1 / 16000) * 1000;
   modelStream.feedAudioContent(chunk);
 }
-var room;
-// create IPFS node
+
+var ipfs;
+
 async function createNode() {
-  var ipfs = await IPFS.create({
+  ipfs = await IPFS.create({
     repo: (() => `ipfs-temp-repo/repo-${Math.random()}`)(),
-    Addresses: {
-      Swarm: ["/ip4/0.0.0.0/tcp/4007", "/ip4/127.0.0.1/tcp/4003/ws"],
-      API: "/ip4/127.0.0.1/tcp/5002",
-      Gateway: "/ip4/127.0.0.1/tcp/9090",
-    },
     EXPERIMENTAL: {
       pubsub: true, // required, enables pubsub
     },
@@ -229,12 +225,9 @@ async function createNode() {
   } catch (error) {
     console.error("Node failed to start!", error);
   }
-  room = new Room(ipfs, "deepspeech");
-
-  room.on("peer joined", (peer) => console.log("peer " + peer + " joined"));
-  room.on("peer left", (peer) => console.log("peer " + peer + " left"));
 }
 
+// create IPFS node
 createNode();
 
 // Socket Connection
@@ -247,12 +240,26 @@ io.on("connection", (socket) => {
   });
   socket.on("micBinaryStream", function (blob) {
     processAudioStream(blob, (results) => {
-      room.broadcast(results);
+      console.log(results);
+      const data = Buffer.from("some message content here");
+      ipfs.pubsub.publish("deepspeech", data, (err) => {
+        if (err) {
+          console.error("error publishing: ", err);
+        } else {
+          console.log("successfully published message");
+        }
+      });
     });
   });
   socket.on("endAudioStream", () => {
     endAudioStream((results) => {
-      room.broadcast(results);
+      ipfs.pubsub.publish("topic-name-here", data, (err) => {
+        if (err) {
+          console.error("error publishing: ", err);
+        } else {
+          console.log("successfully published message");
+        }
+      });
     });
   });
 });
