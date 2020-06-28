@@ -5,10 +5,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AudioShare</title>
-    <link
+    <!--<link
       rel="stylesheet"
       href="http://127.0.0.1:8080/ipns/QmeWpo7nS7ASUwXK6m6A4f7S9QgrAjChLmkNxWbP37KZsT/styles.css"
-    />
+    />-->
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kaushan+Script&family=Satisfy&family=Yellowtail&display=swap"
+      rel="stylesheet">
     <link
       rel="stylesheet"
       href="https://v4-alpha.getbootstrap.com/dist/css/bootstrap.min.css"
@@ -21,10 +24,14 @@
 
   <body>
     <div id="main" align="center">
-      <h2>AudioShare</h2>
-      <p>A web app to record and share audio on IPFS</p>
+      <h1>AudioShare</h1>
+      <div class="description">
+        <p>A Web App to Record and Share Audio on IPFS</p>
+        <br>
+        <p>Generates transcripts on the fly.</p>
+      </div>
       <div id="toRender" class="container"></div>
-      <button id="temp" onClick=setSelected(0)>Back</button>
+      <button id="temp" class="button" onClick=setSelected(0)>Back</button>
     </div>
   </body>
   <script src="js/main.js"></script>
