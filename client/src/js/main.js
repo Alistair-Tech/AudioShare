@@ -13,6 +13,8 @@ let share = `
       Start Recording
     </button>
     <br>
+
+
 `;
 
 let retrieve = `
@@ -41,7 +43,6 @@ function loadDiv() {
   } else if (selected == 1) {
     divToRender.innerHTML = share;
     back.style.visibility = "visible";
-    loadAudio();
   } else if (selected == 2) {
     divToRender.innerHTML = retrieve;
     back.style.visibility = "visible";
@@ -56,9 +57,6 @@ function setSelected(id) {
   loadDiv(); // Load div again to get new content
 }
 
-// Socket Initialization
-var socket = io();
-
 /**
  * Audio Functions:
  * loadAudio() takes access of user's audio devices
@@ -66,73 +64,80 @@ var socket = io();
  * audioHandler() combines the audioChunks retrieved from the audio stream
  */
 
-let rec, blob;
-let audioContext = new AudioContext();
-let bufferSize = 1024 * 16;
-var processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
-processor.connect(audioContext.destination);
+// Socket Initialization
+var socket = io();
+let rec, blob, audioContext;
 
 function loadAudio() {
+  audioContext = new AudioContext();
+  let bufferSize = 1024 * 16;
+  var processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+  processor.connect(audioContext.destination);
+
   navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
     audioHandler(stream);
   });
+
+  function audioHandler(stream) {
+    rec = new MediaRecorder(stream);
+    // Start Recording
+    rec.start();
+
+    input = audioContext.createMediaStreamSource(stream);
+    input.connect(processor);
+
+    processor.onaudioprocess = (e) => {
+      microphoneProcess(e); // receives data from microphone
+    };
+
+    async function microphoneProcess(e) {
+      const left = e.inputBuffer.getChannelData(0); // get only one audio channel
+      const left16 = convertFloat32ToInt16(left); //convert to BINARY16
+      await socket.emit("micBinaryStream", left16); // send to transcriptor via web socket
+    }
+
+    // Convert data to BINARY16
+    function convertFloat32ToInt16(buffer) {
+      let l = buffer.length;
+      const buf = new Int16Array(l / 3);
+
+      while (l--) {
+        if (l % 3 === 0) {
+          buf[l / 3] = buffer[l] * 0xffff;
+        }
+      }
+      return buf.buffer;
+    }
+
+    rec.ondataavailable = (e) => {
+      audioChunks.push(e.data);
+      blob = new Blob(audioChunks, { type: "audio/wav" });
+      if (rec.state == "inactive") {
+        blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
+        let blobUrl = URL.createObjectURL(blob);
+        addOptions("share", blobUrl);
+      }
+    };
+  }
 }
 
-function toggleRecording(id) {
+async function toggleRecording(id) {
   let record = document.getElementById("recordButton");
   try {
-    if (rec.state === "inactive") {
+    if (record.innerHTML === "Start Recording") {
       record.innerHTML = "Stop Recording";
-      rec.start();
+      loadAudio();
     } else {
       rec.stop();
       audioChunks = [];
-      socket.emit("endAudioStream");
+      audioContext.close();
+      await socket.emit("endAudioStream", "close");
       blob = null;
       record.innerHTML = "Start Recording";
     }
   } catch {
-    alert("Please turn on Audio Sharing and Try Again!");
+    alert("Please turn on Audio and Try Again!");
   }
-}
-
-function audioHandler(stream) {
-  rec = new MediaRecorder(stream);
-  input = audioContext.createMediaStreamSource(stream);
-  input.connect(processor);
-
-  processor.onaudioprocess = (e) => {
-    microphoneProcess(e); // receives data from microphone
-  };
-
-  function microphoneProcess(e) {
-    const left = e.inputBuffer.getChannelData(0); // get only one audio channel
-    const left16 = convertFloat32ToInt16(left); //convert to BINARY16
-    socket.emit("micBinaryStream", left16); // send to transcriptor via web socket
-  }
-
-  // Convert data to BINARY16
-  function convertFloat32ToInt16(buffer) {
-    let l = buffer.length;
-    const buf = new Int16Array(l / 3);
-
-    while (l--) {
-      if (l % 3 === 0) {
-        buf[l / 3] = buffer[l] * 0xffff;
-      }
-    }
-    return buf.buffer;
-  }
-
-  rec.ondataavailable = (e) => {
-    audioChunks.push(e.data);
-    blob = new Blob(audioChunks, { type: "audio/wav" });
-    if (rec.state == "inactive") {
-      blob = new Blob(audioChunks, { type: "audio/mpeg-3" });
-      let blobUrl = URL.createObjectURL(blob);
-      addOptions("share", blobUrl);
-    }
-  };
 }
 
 async function shareOnIPFS() {

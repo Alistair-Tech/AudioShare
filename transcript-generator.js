@@ -10,6 +10,7 @@ var http = require("http").createServer(app);
 var io = require("socket.io")(http);
 const DeepSpeech = require("deepspeech");
 const VAD = require("node-vad");
+const IpfsHttpClient = require("ipfs-http-client");
 const DEEPSPEECH_MODEL = require("./settings.js").DEEPSPEECH_MODEL;
 const SILENCE_THRESHOLD = require("./settings.js").SILENCE_THRESHOLD;
 const INACTIVITY_THRESHOLD = require("./settings.js").INACTIVITY_THRESHOLD;
@@ -37,6 +38,7 @@ let silenceStart = null;
 let recordedAudioLength = 0;
 let endTimeout = null;
 let silenceBuffers = [];
+let slash = 0;
 
 // Audio Stream Handler Functions
 
@@ -63,14 +65,17 @@ function processAudioStream(data, callback) {
   // timeout in case no activity is detected
   clearTimeout(endTimeout);
   endTimeout = setTimeout(function () {
-    console.log("timeout");
-    resetAudioStream();
+    if (recordedChunks > 0) {
+      resetAudioStream();
+      console.log("timeout");
+    }
   }, INACTIVITY_THRESHOLD);
 }
 
 function endAudioStream(callback) {
   console.log("[end]");
-  let results = intermediateDecode();
+  let results = finishStream();
+  createStream(); // create Stream again for future connections
   if (results) {
     if (callback) {
       callback(results);
@@ -79,11 +84,11 @@ function endAudioStream(callback) {
 }
 
 function resetAudioStream() {
+  recordedChunks = 0;
+  silenceStart = null;
   clearTimeout(endTimeout);
   console.log("[reset]");
   intermediateDecode(); // ignore results
-  recordedChunks = 0;
-  silenceStart = null;
 }
 
 // DeepSpeech Stream Handler Functions
@@ -118,7 +123,7 @@ function finishStream() {
 function processSilence(data, callback) {
   if (recordedChunks > 0) {
     // recording is on
-    process.stdout.write("-"); // silence detected while recording
+    // silence detected while recording
     feedAudioContent(data);
     if (silenceStart === null) {
       silenceStart = new Date().getTime();
@@ -137,19 +142,23 @@ function processSilence(data, callback) {
     }
   } else {
     // No Recording
-    process.stdout.write("."); // silence detected while not recording
+    console.log("Waiting for Recording To Start"); // silence detected while not recording
     bufferSilence(data);
   }
 }
 
 function processVoice(data, callback) {
   silenceStart = null;
-  if (recordedChunks === 0) {
-    console.log("");
-    process.stdout.write("[start]"); // recording started
+  console.clear();
+  if (slash) {
+    console.log("Recording /");
+    slash = 0;
   } else {
-    process.stdout.write("="); // still recording
+    console.log("Recording \\");
+    slash = 1;
   }
+  data = addBufferedSilence(data);
+  feedAudioContent(data);
   let results = intermediateDecode();
   if (results) {
     if (callback) {
@@ -157,8 +166,6 @@ function processVoice(data, callback) {
     }
   }
   recordedChunks++;
-  data = addBufferedSilence(data);
-  feedAudioContent(data);
 }
 
 // Decoder Functions
@@ -204,6 +211,25 @@ function feedAudioContent(chunk) {
   modelStream.feedAudioContent(chunk);
 }
 
+// IPFS
+async function shareOnIPFS(data) {
+  // Initialize object to work with IPFS API
+  try {
+    const ipfs = IpfsHttpClient({ host: "localhost", port: 5002 });
+    const results = await ipfs.add(data);
+
+    // Iterate over the async iterator to fetch the hash
+    for await (let result of results) {
+      console.log(
+        "The audio has been successfully shared on IPFS with CID: " +
+          result.path
+      );
+    }
+  } catch (err) {
+    console.log("gre", err.message);
+  }
+}
+
 // Socket Connection
 
 io.on("connection", (socket) => {
@@ -215,11 +241,12 @@ io.on("connection", (socket) => {
   socket.on("micBinaryStream", function (blob) {
     processAudioStream(blob, (results) => {
       console.log(results);
+      const data = Buffer.from("some message content here");
     });
   });
-  socket.on("endAudioStream", () => {
+  socket.on("endAudioStream", (data) => {
     endAudioStream((results) => {
-      console.log(results);
+      shareOnIPFS(results.text);
     });
   });
 });
