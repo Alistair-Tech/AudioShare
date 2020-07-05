@@ -4,12 +4,17 @@
  */
 
 let home = `
-    <button onClick=setSelected(1)>Share Audio</button>
-    <button onClick=setSelected(2)>Retrieve Audio</button>
+    <button class="button" onClick=setSelected(1)>Share Audio</button>
+    <button class="button" onClick=setSelected(2)>Retrieve Audio</button>
 `;
 
 let share = `
-    <button id='recordButton' onclick=toggleRecording()>Start Recording</button>
+    <button id='recordButton' class="button" onclick=toggleRecording()>
+      Start Recording
+    </button>
+    <br>
+
+
 `;
 
 let retrieve = `
@@ -17,8 +22,8 @@ let retrieve = `
     <label for='cid'>Enter CID</label>
     <input type='text' id='cid' name='cid'>
     <br>
+    <button class="button" onClick=searchOnIPFS()>Search</button>
     <br>
-    <button onClick=searchOnIPFS()>Search</button>
   </div>
 `;
 
@@ -160,12 +165,16 @@ function searchOnIPFS() {
 function addOptions(purpose, url) {
   divToRender = document.getElementById("toRender");
   divToRender.innerHTML += `
+      <br>
       <audio id='recordedAudio'></audio>
+      <br>
       <a id='link'>Download Audio</a>
+      <br>
   `;
   if (purpose === "share") {
     divToRender.innerHTML += `
-      <button onClick=shareOnIPFS()>Share on IPFS</button>
+      <br>
+      <button class="button" onClick=shareOnIPFS()>Share on IPFS</button>
     `;
   }
   audio = document.getElementById("recordedAudio");

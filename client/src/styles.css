@@ -1,7 +1,53 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: #031321;
+  height: min-content;
+}
 #main {
-  width: 100%;
+  color: wheat;
+  margin: 0;
+  padding: 0;
   height: 100vh;
-  background-image: url("/static/hero-bg.png");
+  background: #031321;
+  font-family: sans-serif;
+}
+.container {
+  display: block;
   position: relative;
-  color: black;
+  top: 250px;
+}
+h1 {
+  position: relative;
+  top: 200px;
+}
+.description {
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  font-family: "Kaushan Script", cursive;
+}
+#temp {
+  position: relative;
+  top: 260px;
+}
+.button {
+  height: 30px;
+  border: 0;
+  display: inline-block;
+  background: #031321;
+  color: #2196f3;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-decoration: none;
+  font-size: 15px;
+  overflow: hidden;
+  transform: 0.2%;
+}
+.button:hover {
+  color: #255784;
+  border: 0;
+  background: #2196f3;
+  box-shadow: 0 0 10px #2196f3, 0 0 40px #2196f3, 0 0 80px #2196f3;
+  transition-delay: 0.1s;
 }
